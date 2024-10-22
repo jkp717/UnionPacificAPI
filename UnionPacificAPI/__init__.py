@@ -1,5 +1,6 @@
 import os
 from datetime import timedelta
+from dataclasses import fields
 from typing import Optional
 from urllib.parse import urlencode
 import requests
@@ -7,7 +8,7 @@ from datetime import datetime
 import base64
 import dotenv
 
-from UnionPacificAPI.datatypes import fields, Route, Location, Shipment
+from UnionPacificAPI.datatypes import Route, Location, Shipment
 
 
 class UnionPacificAPI:
