@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='api',
+    name='UnionPacificAPI',
     version='0.0.1',
     author='Josh Price',
     author_email='joshkprice717@gmail.com',

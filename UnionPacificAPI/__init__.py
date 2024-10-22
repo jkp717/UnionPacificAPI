@@ -7,7 +7,7 @@ from datetime import datetime
 import base64
 import dotenv
 
-from api.datatypes import fields, Route, Location, Shipment
+from UnionPacificAPI.datatypes import fields, Route, Location, Shipment
 
 
 class UnionPacificAPI:
@@ -116,8 +116,8 @@ class UnionPacificAPI:
 
     def endpoint_builder(self, endpoint: str, **kwargs):
         """
-        Builds api url as string
-        :param endpoint: api request type endpoint
+        Builds UnionPacificAPI url as string
+        :param endpoint: UnionPacificAPI request type endpoint
         :param kwargs: URL parameters (key/value pairs)
         :return: URL string
         """
