@@ -7,8 +7,9 @@ import requests
 from datetime import datetime
 import base64
 import dotenv
+from dacite import from_dict
 
-from UnionPacificAPI.datatypes import Route, Location, Shipment
+from UnionPacificAPI.datatypes import BaseData, Route, Location, Shipment
 
 
 class UnionPacificAPI:
@@ -140,9 +141,9 @@ class UnionPacificAPI:
         if resp.status_code == 200:
             return resp.json()
         else:
-            raise Exception(f"""
-            Received unexpected response from UP API {url}; Status Code: {resp.status_code};
-            """)
+            raise Exception(f"\nReceived unexpected response from UP API {url};"
+                            f"\nStatus Code: {resp.status_code};"
+                            f"\nResponse: {resp.text}")
 
     def get_routes(self, origin_id, dest_id, origin_rr: Optional[str] = None, dest_rr: Optional[str] = None,
                    jct_abbr: Optional[str] = None, jct_rr: Optional[str] = None) -> list[Route]:
@@ -166,7 +167,7 @@ class UnionPacificAPI:
             'junction_abbreviation': jct_abbr,
             'junction_carrier': jct_rr
         }
-        url = self.endpoint_builder(self.route_endpoint, origin_id=origin_id, dest_id=dest_id, **optional_params)
+        url = self.endpoint_builder(self.route_endpoint, origin_id=origin_id, destination_id=dest_id, **optional_params)
         r_json = self._call_api(url)
 
         # Remove any data fields that are not in dataclass
@@ -174,7 +175,7 @@ class UnionPacificAPI:
 
         resp = []
         for rt in r_json:
-            resp.append(Route(**{k: rt[k] for k in data_keys if k in rt.keys()}))
+            resp.append(from_dict(Route, {k: rt[k] for k in data_keys if k in rt.keys()}))
         return resp
 
     def get_route_by_id(self, route_id: str) -> Route:
@@ -189,7 +190,7 @@ class UnionPacificAPI:
 
         # Remove any data fields that are not in dataclass
         data_keys = [f.name for f in fields(Route)]  # noqa
-        return Route(**{k: r_json[k] for k in data_keys if k in r_json.keys()})
+        return from_dict(Route, {k: r_json[k] for k in data_keys if k in r_json.keys()})
 
     def get_locations(self, splc: Optional[str] = None) -> list[Location]:
         """
@@ -200,7 +201,9 @@ class UnionPacificAPI:
         :param splc: location splc (Optional)
         :return: List of Location objects
         """
-        url = self.endpoint_builder(self.locations_endpoint, splc=splc)
+        # add padding
+        _splc = splc.ljust(9, '0') if splc else None
+        url = self.endpoint_builder(self.locations_endpoint, splc=_splc)
         r_json = self._call_api(url)
 
         # Remove any data fields that are not in dataclass
@@ -208,7 +211,7 @@ class UnionPacificAPI:
 
         resp = []
         for loc in r_json:
-            resp.append(Location(**{k: loc[k] for k in data_keys if k in loc.keys()}))
+            resp.append(from_dict(Location, {k: loc[k] for k in data_keys if k in loc.keys()}))
         return resp
 
     def get_location_by_id(self, location_id: str) -> Location:
@@ -223,7 +226,7 @@ class UnionPacificAPI:
 
         # Remove any data fields that are not in dataclass
         data_keys = [f.name for f in fields(Location)]  # noqa
-        return Location(**{k: r_json[k] for k in data_keys if k in r_json.keys()})
+        return from_dict(Location, {k: r_json[k] for k in data_keys if k in r_json.keys()})
 
     def get_shipments(
             self,
@@ -273,8 +276,8 @@ class UnionPacificAPI:
         data_keys = [f.name for f in fields(Shipment)]  # noqa
 
         resp = []
-        for loc in r_json:
-            resp.append(Shipment(**{k: loc[k] for k in data_keys if k in loc.keys()}))
+        for shp in r_json:
+            resp.append(from_dict(Shipment, {k: shp[k] for k in data_keys if k in shp.keys()}))
         return resp
 
     def get_shipment_by_id(self, shipment_id: Optional[str] = None) -> Shipment:
@@ -295,4 +298,4 @@ class UnionPacificAPI:
 
         # Remove any data fields that are not in dataclass
         data_keys = [f.name for f in fields(Shipment)]  # noqa
-        return Shipment(**{k: r_json[k] for k in data_keys if k in r_json.keys()})
+        return from_dict(Shipment, {k: r_json[k] for k in data_keys if k in r_json.keys()})

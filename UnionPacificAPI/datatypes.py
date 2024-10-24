@@ -59,9 +59,9 @@ class BOL(BaseData):
 class Location(BaseData):
     id: str
     city: str
-    type_code: str
     state_abbreviation: str
     country_abbreviation: str
+    type_code: Optional[str] = None
     splc: Optional[str] = None
     # Following only provided when request by ID
     postal_code: Optional[str] = None
@@ -72,8 +72,8 @@ class Location(BaseData):
 @dataclass(frozen=True)
 class CarrierLocation(BaseData):
     location: Location
-    carrier: str
-    junction_abbreviation: str
+    carrier: Optional[str] = None
+    junction_abbreviation: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -81,14 +81,14 @@ class Segment(BaseData):
     beginning: CarrierLocation
     end: CarrierLocation
     mileage: float
-    carrier: str
+    carrier: Optional[str] = None
 
 
 @dataclass(frozen=True)
 class RouteMileage(BaseData):
     mileage: float
-    segments: list[Segment]
-    type_code: str
+    segments: Optional[list[Segment]] = None
+    type_code: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -97,7 +97,7 @@ class Route(BaseData):
     origin: CarrierLocation
     destination: CarrierLocation
     junctions: list[CarrierLocation]
-    route_mileages: RouteMileage
+    route_mileages: list[RouteMileage]
 
 
 @dataclass(frozen=True)

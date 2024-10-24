@@ -8,9 +8,10 @@ setup(
     description="A python client library for Union Pacific's API",
     packages=find_packages(),
     install_requires=[
-        'requests>=2.0.0',
+        'requests>=2.32.0',
         'python-dotenv>=1.0.0',
-        'urllib>=2.2.0',
+        'urllib3>=2.2.3',
+        'dacite>=1.8.0'
     ],
 )
 
