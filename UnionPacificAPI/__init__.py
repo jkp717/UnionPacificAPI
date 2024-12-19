@@ -8,6 +8,7 @@ from datetime import datetime
 import base64
 import dotenv
 from dacite import from_dict
+import json
 
 from UnionPacificAPI.datatypes import BaseData, Route, Location, Shipment
 
@@ -21,7 +22,7 @@ class UnionPacificAPI:
     token_filename = '.token'
     env_filename = '.env'
 
-    def __init__(self, userid: str = None, password: str = None, env_dir: str = None):
+    def __init__(self, userid: str = None, password: str = None, env_dir: str = None, force_new_token: bool = False):
         if env_dir:
             self._env_dir = env_dir
         else:
@@ -39,6 +40,7 @@ class UnionPacificAPI:
         self._session = None
         self._tk_path = None
         self._tk_datetime = None
+        self._force_new_token = force_new_token
 
         if not os.path.exists(os.path.join(self._env_dir, self.token_filename)):
             with open(os.path.join(self._env_dir, self.token_filename), "w") as f:
@@ -63,7 +65,7 @@ class UnionPacificAPI:
     def _load_env_token(self) -> None:
         dotenv.load_dotenv(os.path.join(self._env_dir, self.token_filename))
         _tk_timestamp = os.getenv('UP_TOKEN_TIMESTAMP')
-        if _tk_timestamp:
+        if _tk_timestamp and not self._force_new_token:
             self._tk_datetime = datetime.fromisoformat(_tk_timestamp)
             self._tk = os.getenv('UP_TOKEN')
 
@@ -169,6 +171,9 @@ class UnionPacificAPI:
         }
         url = self.endpoint_builder(self.route_endpoint, origin_id=origin_id, destination_id=dest_id, **optional_params)
         r_json = self._call_api(url)
+
+        # json_formatted_str = json.dumps(r_json, indent=2)
+        # print(json_formatted_str)
 
         # Remove any data fields that are not in dataclass
         data_keys = [f.name for f in fields(Route)]  # noqa

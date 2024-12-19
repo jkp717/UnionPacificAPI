@@ -1,6 +1,6 @@
 from typing import Optional
 from abc import ABCMeta
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 class BaseData(object, metaclass=ABCMeta):
@@ -87,17 +87,35 @@ class Segment(BaseData):
 @dataclass(frozen=True)
 class RouteMileage(BaseData):
     mileage: float
-    segments: Optional[list[Segment]] = None
+    route_segments: Optional[list[Segment]] = None
     type_code: Optional[str] = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class Route(BaseData):
     id: str
     origin: CarrierLocation
     destination: CarrierLocation
-    junctions: list[CarrierLocation]
     route_mileages: list[RouteMileage]
+    junctions: Optional[list[CarrierLocation]] = None
+    route_str: list[str] = field(init=False)
+
+    def __post_init__(self):
+        self.route_str = []
+        for mileage in self.route_mileages:
+            prev_rr = None
+            route_str = ""
+            for seg in mileage.route_segments:
+                if prev_rr is None:
+                    prev_rr = seg.carrier
+                    route_str = seg.carrier
+                    continue
+                if prev_rr != seg.carrier:
+                    if prev_rr == 'UP':
+                        # We only care about the next RR interchanging w/ UP
+                        route_str += f"-{seg.beginning.junction_abbreviation}-{seg.carrier}"
+                    prev_rr = seg.carrier
+            self.route_str.append(route_str)
 
 
 @dataclass(frozen=True)
