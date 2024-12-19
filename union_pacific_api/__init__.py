@@ -8,9 +8,8 @@ from datetime import datetime
 import base64
 import dotenv
 from dacite import from_dict
-import json
 
-from UnionPacificAPI.datatypes import BaseData, Route, Location, Shipment
+from union_pacific_api.datatypes import BaseData, Route, Location, Shipment
 
 
 class UnionPacificAPI:
@@ -120,8 +119,8 @@ class UnionPacificAPI:
 
     def endpoint_builder(self, endpoint: str, **kwargs):
         """
-        Builds UnionPacificAPI url as string
-        :param endpoint: UnionPacificAPI request type endpoint
+        Builds union_pacific_api url as string
+        :param endpoint: union_pacific_api request type endpoint
         :param kwargs: URL parameters (key/value pairs)
         :return: URL string
         """
