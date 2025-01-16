@@ -60,7 +60,7 @@ class Location(BaseData):
     id: str
     city: str
     state_abbreviation: str
-    country_abbreviation: str
+    country_abbreviation: Optional[str] = None
     type_code: Optional[str] = None
     splc: Optional[str] = None
     # Following only provided when request by ID
