@@ -12,7 +12,7 @@ from dacite import from_dict
 from union_pacific_api.datatypes import BaseData, Route, Location, Shipment
 
 
-class UnionPacificAPI:
+class UPClient:
     base_url = 'https://customer.api.up.com'
     route_endpoint = '/services/v2/routes'
     locations_endpoint = '/services/v2/locations'
