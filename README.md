@@ -1,4 +1,4 @@
-UnionPacificAPI is an unofficial Python library for the Union Pacific Railroad REST API.
+UnionPacificAPI is an unofficial Python client library for the Union Pacific Railroad REST API.
 
 ### Usage Example...
 ```
