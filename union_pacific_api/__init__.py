@@ -143,7 +143,6 @@ class UPClient:
                     param[k] = ','.join(v)
                 else:
                     param[k] = v
-        print(f"{self.base_url}{endpoint}?{urlencode(param)}")
         return f"{self.base_url}{endpoint}?{urlencode(param)}"
 
     def _call_api(self, url):
@@ -188,9 +187,6 @@ class UPClient:
         }
         url = self.endpoint_builder(self.route_endpoint, origin_id=origin_id, destination_id=dest_id, **optional_params)
         r_json = self._call_api(url)
-
-        # json_formatted_str = json.dumps(r_json, indent=2)
-        # print(json_formatted_str)
 
         # Remove any data fields that are not in dataclass
         data_keys = [f.name for f in fields(Route)]  # noqa
@@ -381,7 +377,7 @@ class UPClient:
         }
         url = self.endpoint_builder(f"{self.cases_endpoint}", **optional_params)
         r_json = self._call_api(url)
-        print(json.dumps(r_json, indent=4))
+
         # Remove any data fields that are not in dataclass
         data_keys = [f.name for f in fields(Waybill)]  # noqa
 
