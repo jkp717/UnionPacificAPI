@@ -327,7 +327,7 @@ class UPClient:
         """
         If no parameters are given will return all "OPEN" Cases.
 
-        :param created: Array of python datetime(s)
+        :param created: Array of python datetime(s) or date str (YYYY-MM-DD format)
         :param status_codes: Array of strings. Can provide specific status code or OPEN to retrieve all open cases
             (IN_PROGRESS, NEW, AWAITING_FEEDBACK) or CEASED to retrieve ceased cases (CANCELED, CLOSED)
         :param equipment_ids: Array of equipment id strings
