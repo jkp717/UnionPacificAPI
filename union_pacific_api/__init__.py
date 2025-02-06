@@ -1,4 +1,5 @@
 import os
+import json
 from datetime import timedelta
 from dataclasses import fields
 from typing import Optional
@@ -12,11 +13,12 @@ from dacite import from_dict
 from union_pacific_api.datatypes import BaseData, Route, Location, Shipment
 
 
-class UnionPacificAPI:
+class UPClient:
     base_url = 'https://customer.api.up.com'
     route_endpoint = '/services/v2/routes'
     locations_endpoint = '/services/v2/locations'
     shipments_endpoint = '/services/v2/shipments'
+    cases_endpoint = '/services/v2/cases'
     oauth_endpoint = '/oauth/token'
     token_filename = '.token'
     env_filename = '.env'
@@ -303,3 +305,55 @@ class UnionPacificAPI:
         # Remove any data fields that are not in dataclass
         data_keys = [f.name for f in fields(Shipment)]  # noqa
         return from_dict(Shipment, {k: r_json[k] for k in data_keys if k in r_json.keys()})
+
+    def get_case_by_id(self, case_id: str):
+        """
+        :param case_id: Use to get a single case details.
+        :return:
+        """
+        url = self.endpoint_builder(f"{self.cases_endpoint}/{case_id}")
+        r_json = self._call_api(url)
+        return r_json
+
+    def get_cases(self, created: Optional[list[str]] = None, status_codes: Optional[list[str]] = None,
+                  equipment_ids: Optional[list[str]] = None):
+        """
+        If no parameters are given will return all "OPEN" Cases.
+
+        :param created: Array of strings <date>
+        :param status_codes: Array of strings. Can provide specific status code or OPEN to retrieve all open cases
+            (IN_PROGRESS, NEW, AWAITING_FEEDBACK) or CEASED to retrieve ceased cases (CANCELED, CLOSED)
+        :param equipment_ids: Array of equipment id strings
+        :return: List of Case Objects
+        """
+        # Set optional URL parameters
+        optional_params = {
+            'equipment_id': equipment_ids,
+            'status_code': status_codes,
+            'created': created
+        }
+        url = self.endpoint_builder(f"{self.cases_endpoint}", **optional_params)
+        r_json = self._call_api(url)
+        return r_json
+
+    def get_single_departure(self, departure_id):
+        """
+        Allows searching for a single departure by the ID. Returns one departure only.
+
+        :param departure_id:
+        :return:
+        """
+        pass
+
+    def get_departures(self, departure_id, origin_location_id, dest_location_id):
+        """
+        Finds departures for origin to destination by time and origin/destination location id. If departure IDs are provided, any
+        other parameters will be ignored. Time is limited to 7 days of departures, and if no times are given only the next 7 days
+        will be given.
+
+        :param departure_id:
+        :param origin_location_id:
+        :param dest_location_id:
+        :return:
+        """
+        pass

@@ -1,6 +1,6 @@
 [project]
 name = "union_pacific_api"
-version = "0.0.1b"
+version = "0.0.2"
 authors = [
   { name="Josh Price", email="joshkprice717@gmail.com" },
 ]

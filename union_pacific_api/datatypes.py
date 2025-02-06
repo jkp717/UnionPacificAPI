@@ -93,29 +93,31 @@ class RouteMileage(BaseData):
 
 @dataclass(frozen=False)
 class Route(BaseData):
-    id: str
     origin: CarrierLocation
     destination: CarrierLocation
-    route_mileages: list[RouteMileage]
+    route_mileages: Optional[list[RouteMileage]] = None  # not always provided on shipment searches
+    id: Optional[str] = None  # id not always provided on shipment searches
     junctions: Optional[list[CarrierLocation]] = None
+    last_accomplished_event_stop: Optional[CarrierLocation] = None
     route_str: list[str] = field(init=False)
 
     def __post_init__(self):
         self.route_str = []
-        for mileage in self.route_mileages:
-            prev_rr = None
-            route_str = ""
-            for seg in mileage.route_segments:
-                if prev_rr is None:
-                    prev_rr = seg.carrier
-                    route_str = seg.carrier
-                    continue
-                if prev_rr != seg.carrier:
-                    if prev_rr == 'UP':
-                        # We only care about the next RR interchanging w/ UP
-                        route_str += f"-{seg.beginning.junction_abbreviation}-{seg.carrier}"
-                    prev_rr = seg.carrier
-            self.route_str.append(route_str)
+        if self.route_mileages:
+            for mileage in self.route_mileages:
+                prev_rr = None
+                route_str = ""
+                for seg in mileage.route_segments:
+                    if prev_rr is None:
+                        prev_rr = seg.carrier
+                        route_str = seg.carrier
+                        continue
+                    if prev_rr != seg.carrier:
+                        if prev_rr == 'UP':
+                            # We only care about the next RR interchanging w/ UP
+                            route_str += f"-{seg.beginning.junction_abbreviation}-{seg.carrier}"
+                        prev_rr = seg.carrier
+                self.route_str.append(route_str)
 
 
 @dataclass(frozen=True)
@@ -128,13 +130,14 @@ class CarrierTrain(BaseData):
 @dataclass(frozen=True)
 class Event(BaseData):
     type_code: str
-    offline: str
+    offline: bool
     status_code: str
     event_code: Optional[str] = None
     date_time: Optional[str] = None  # Date of the event in YYYY-MM-DDTHH:MM:SSZ in UTC time format.
     location: Optional[Location] = None
     carrier_abbreviation: Optional[str] = None
     carrier_train: Optional[CarrierTrain] = None
+    equipment: Optional[Equipment] = None
 
 
 @dataclass(frozen=True)
@@ -147,3 +150,5 @@ class Shipment(BaseData):
     route: Optional[Route] = None
     hold_code: Optional[str] = None
     started_dwell: Optional[str] = None  # The time the shipment began dwell in YYYY-MM-DDTHH:MM:SSZ in UTC time format.
+    operational_move_events: Optional[list[Event]] = None
+
