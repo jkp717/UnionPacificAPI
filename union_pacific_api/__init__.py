@@ -1,8 +1,8 @@
-import os
 import json
+import os
 from datetime import timedelta
 from dataclasses import fields
-from typing import Optional
+from typing import Optional, Union
 from urllib.parse import urlencode
 import requests
 from datetime import datetime
@@ -10,7 +10,7 @@ import base64
 import dotenv
 from dacite import from_dict
 
-from union_pacific_api.datatypes import BaseData, Route, Location, Shipment
+from union_pacific_api.datatypes import BaseData, Route, Location, Shipment, Case, Waybill
 
 
 class UPClient:
@@ -19,6 +19,7 @@ class UPClient:
     locations_endpoint = '/services/v2/locations'
     shipments_endpoint = '/services/v2/shipments'
     cases_endpoint = '/services/v2/cases'
+    waybill_endpoint = '/services/v2/waybills'
     oauth_endpoint = '/oauth/token'
     token_filename = '.token'
     env_filename = '.env'
@@ -69,6 +70,14 @@ class UPClient:
         if _tk_timestamp and not self._force_new_token:
             self._tk_datetime = datetime.fromisoformat(_tk_timestamp)
             self._tk = os.getenv('UP_TOKEN')
+
+    @staticmethod
+    def _date_param_to_str(dt: Union[datetime, str, None]) -> Union[str, None]:
+        if isinstance(dt, datetime):
+            return dt.strftime('%Y-%m-%d')
+        if isinstance(dt, str):
+            return dt
+        return None
 
     @property
     def token(self) -> Optional[str]:
@@ -127,8 +136,15 @@ class UPClient:
         :return: URL string
         """
         # Remove any items with a value of None
-        is_not_none = {k: v for k, v in kwargs.items() if v is not None}
-        return f"{self.base_url}{endpoint}?{urlencode(is_not_none)}"
+        param = {}
+        for k, v in kwargs.items():
+            if v is not None:
+                if isinstance(v, list):
+                    param[k] = ','.join(v)
+                else:
+                    param[k] = v
+        print(f"{self.base_url}{endpoint}?{urlencode(param)}")
+        return f"{self.base_url}{endpoint}?{urlencode(param)}"
 
     def _call_api(self, url):
         """
@@ -234,14 +250,9 @@ class UPClient:
         data_keys = [f.name for f in fields(Location)]  # noqa
         return from_dict(Location, {k: r_json[k] for k in data_keys if k in r_json.keys()})
 
-    def get_shipments(
-            self,
-            equipment_ids: Optional[list[str]] = None,
-            waybill_ids: Optional[list[str]] = None,
-            origin_id: Optional[list[str]] = None,
-            destination_id: Optional[list[str]] = None,
-            phase_codes: Optional[list[str]] = None
-    ) -> list[Shipment]:
+    def get_shipments(self, equipment_ids: Optional[list[str]] = None, waybill_ids: Optional[list[str]] = None,
+        origin_id: Optional[list[str]] = None, destination_id: Optional[list[str]] = None,
+        phase_codes: Optional[list[str]] = None) -> list[Shipment]:
         """
         This service can be used to retrieve requested Shipments for which the user is party to the bill.
         A shipment represents the delivery of a loaded or empty rail equipment from origin to destination.
@@ -286,7 +297,7 @@ class UPClient:
             resp.append(from_dict(Shipment, {k: shp[k] for k in data_keys if k in shp.keys()}))
         return resp
 
-    def get_shipment_by_id(self, shipment_id: Optional[str] = None) -> Shipment:
+    def get_shipment_by_id(self, shipment_id: str) -> Shipment:
         """
         Returns shipments for which the user is party to the bill. A shipment represents the delivery
         of a loaded or empty rail equipment from origin to destination. The shipment ID is a unique number
@@ -306,7 +317,7 @@ class UPClient:
         data_keys = [f.name for f in fields(Shipment)]  # noqa
         return from_dict(Shipment, {k: r_json[k] for k in data_keys if k in r_json.keys()})
 
-    def get_case_by_id(self, case_id: str):
+    def get_case_by_id(self, case_id: str) -> Case:
         """
         :param case_id: Use to get a single case details.
         :return:
@@ -315,12 +326,12 @@ class UPClient:
         r_json = self._call_api(url)
         return r_json
 
-    def get_cases(self, created: Optional[list[str]] = None, status_codes: Optional[list[str]] = None,
-                  equipment_ids: Optional[list[str]] = None):
+    def get_cases(self, created: Union[datetime, str, None] = None, status_codes: Optional[list[str]] = None,
+                  equipment_ids: Optional[list[str]] = None) -> list[Case]:
         """
         If no parameters are given will return all "OPEN" Cases.
 
-        :param created: Array of strings <date>
+        :param created: Array of python datetime(s)
         :param status_codes: Array of strings. Can provide specific status code or OPEN to retrieve all open cases
             (IN_PROGRESS, NEW, AWAITING_FEEDBACK) or CEASED to retrieve ceased cases (CANCELED, CLOSED)
         :param equipment_ids: Array of equipment id strings
@@ -330,30 +341,51 @@ class UPClient:
         optional_params = {
             'equipment_id': equipment_ids,
             'status_code': status_codes,
-            'created': created
+            'created': self._date_param_to_str(created)
         }
         url = self.endpoint_builder(f"{self.cases_endpoint}", **optional_params)
         r_json = self._call_api(url)
+
+        # Remove any data fields that are not in dataclass
+        data_keys = [f.name for f in fields(Case)]  # noqa
+
+        resp = []
+        for c in r_json:
+            resp.append(from_dict(Case, {k: c[k] for k in data_keys if k in c.keys()}))
+        return resp
+
+    def get_waybill_by_id(self, waybill_id: str) -> Waybill:
+        """
+        Use to get a single waybill details
+
+        :param waybill_id: Waybill id (not the same as a waybill number)
+        :return: Waybill Object
+        """
+        url = self.endpoint_builder(f"{self.waybill_endpoint}/{waybill_id}")
+        r_json = self._call_api(url)
         return r_json
 
-    def get_single_departure(self, departure_id):
+    def get_waybills(self, shipment_ids: Optional[list[str]] = None, equipment_ids: Optional[list[str]] = None) -> list[Waybill]:
         """
-        Allows searching for a single departure by the ID. Returns one departure only.
+        Must provide at least one query parameter.
 
-        :param departure_id:
-        :return:
+        :param shipment_ids: UP Shipment Ids
+        :param equipment_ids: If only sending equipment ids, the list of equipment ids is limited to 10, any given past
+            the first 10 will be ignored.
+        :return: List of Waybill Objects
         """
-        pass
+        # Set optional URL parameters
+        optional_params = {
+            'shipment_id': shipment_ids,
+            'equipment_id': equipment_ids
+        }
+        url = self.endpoint_builder(f"{self.cases_endpoint}", **optional_params)
+        r_json = self._call_api(url)
+        print(json.dumps(r_json, indent=4))
+        # Remove any data fields that are not in dataclass
+        data_keys = [f.name for f in fields(Waybill)]  # noqa
 
-    def get_departures(self, departure_id, origin_location_id, dest_location_id):
-        """
-        Finds departures for origin to destination by time and origin/destination location id. If departure IDs are provided, any
-        other parameters will be ignored. Time is limited to 7 days of departures, and if no times are given only the next 7 days
-        will be given.
-
-        :param departure_id:
-        :param origin_location_id:
-        :param dest_location_id:
-        :return:
-        """
-        pass
+        resp = []
+        for w in r_json:
+            resp.append(from_dict(Waybill, {k: w[k] for k in data_keys if k in w.keys()}))
+        return resp

@@ -143,7 +143,7 @@ class Event(BaseData):
 @dataclass(frozen=True)
 class Shipment(BaseData):
     id: str
-    load: BOL
+    load: Optional[BOL] = None  # Not always available from Case endpoints
     current_event: Optional[Event] = None
     phase_code: Optional[str] = None
     online: Optional[str] = None
@@ -151,4 +151,32 @@ class Shipment(BaseData):
     hold_code: Optional[str] = None
     started_dwell: Optional[str] = None  # The time the shipment began dwell in YYYY-MM-DDTHH:MM:SSZ in UTC time format.
     operational_move_events: Optional[list[Event]] = None
+
+
+@dataclass(frozen=True)
+class User(BaseData):
+    user_id: str
+
+@dataclass(frozen=True)
+class CaseComment(BaseData):
+    body: str
+    created_by: User
+    created: str  # The time the shipment began dwell in YYYY-MM-DDTHH:MM:SSZ in UTC time format.
+
+
+@dataclass(frozen=True)
+class Case(BaseData):
+    id: str
+    description: str
+    subject: str
+    reason_code: str
+    status_code: str
+    created_by: User
+    created: str  # The time the shipment began dwell in YYYY-MM-DDTHH:MM:SSZ in UTC time format.
+    last_modified_by: Optional[User] = None
+    last_modified: Optional[str] = None  # The time the shipment began dwell in YYYY-MM-DDTHH:MM:SSZ in UTC time format.
+    tracked_comments: Optional[list[CaseComment]] = None
+    lead_shipment: Optional[Shipment] = None
+    lead_equipment: Optional[Equipment] = None
+    waybill: Optional[Waybill] = None
 
