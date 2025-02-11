@@ -155,7 +155,7 @@ class UPClient:
         payload = {}
         headers = {'Authorization': 'Bearer ' + self.token, 'Date': dt}
         resp = requests.request("GET", url, headers=headers, data=payload)
-        if resp.status_code == 200:
+        if resp.status_code == 200 or resp.status_code == 204:
             return resp.json()
         else:
             raise Exception(f"\nReceived unexpected response from UP API {url};"
