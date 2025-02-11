@@ -155,12 +155,12 @@ class UPClient:
         payload = {}
         headers = {'Authorization': 'Bearer ' + self.token, 'Date': dt}
         resp = requests.request("GET", url, headers=headers, data=payload)
-        if resp.status_code == 200 or resp.status_code == 204:
+        if resp.status_code == 200 or resp.status_code == 206:
             return resp.json()
         else:
             raise Exception(f"\nReceived unexpected response from UP API {url};"
-                            f"\nStatus Code: {resp.status_code};"
-                            f"\nResponse: {resp.text}")
+                            f"\nStatus Code: {resp.status_code};")
+                            # f"\nResponse: {resp.text}")
 
     def get_routes(self, origin_id, dest_id, origin_rr: Optional[str] = None, dest_rr: Optional[str] = None,
                    jct_abbr: Optional[str] = None, jct_rr: Optional[str] = None) -> list[Route]:
