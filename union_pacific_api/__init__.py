@@ -159,8 +159,8 @@ class UPClient:
             return resp.json()
         else:
             raise Exception(f"\nReceived unexpected response from UP API {url};"
-                            f"\nStatus Code: {resp.status_code};")
-                            # f"\nResponse: {resp.text}")
+                            f"\nStatus Code: {resp.status_code};"
+                            f"\nResponse: {resp.text}")
 
     def get_routes(self, origin_id, dest_id, origin_rr: Optional[str] = None, dest_rr: Optional[str] = None,
                    jct_abbr: Optional[str] = None, jct_rr: Optional[str] = None) -> list[Route]:
