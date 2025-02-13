@@ -6,7 +6,7 @@ authors = [
 ]
 description = "A python client library for Union Pacific's API"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",

@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import os
 from datetime import timedelta
-from dataclasses import fields
-from typing import Optional, Union
+from dataclasses import fields, dataclass
+from typing import Optional, Any, Union, List
 from urllib.parse import urlencode
 import requests
 from datetime import datetime
@@ -9,7 +11,7 @@ import base64
 import dotenv
 from dacite import from_dict
 
-from union_pacific_api.datatypes import BaseData, Route, Location, Shipment, Case, Waybill
+from union_pacific_api.datatypes import BaseData, Route, Location, Shipment, Case, Waybill, Equipment
 
 
 class UPClient:
@@ -19,11 +21,21 @@ class UPClient:
     shipments_endpoint = '/services/v2/shipments'
     cases_endpoint = '/services/v2/cases'
     waybill_endpoint = '/services/v2/waybills'
+    equipment_endpoint = '/services/v2/equipment'
     oauth_endpoint = '/oauth/token'
     token_filename = '.token'
     env_filename = '.env'
 
-    def __init__(self, userid: str = None, password: str = None, env_dir: str = None, force_new_token: bool = False):
+    def __init__(self, userid: str = None, password: str = None, env_dir: str = None, force_new_token: bool = False,
+                 use_dataclasses: bool = True):
+        """
+
+        :param userid: UP API user id
+        :param password: UP API password
+        :param env_dir: Path to environment variable file (.env).  Defaults to CWD.
+        :param force_new_token: Force requesting new token; prevent checking for existing token
+        :param use_dataclasses: If true, results output Python Dataclasses, otherwise the output is JSON
+        """
         if env_dir:
             self._env_dir = env_dir
         else:
@@ -42,6 +54,7 @@ class UPClient:
         self._tk_path = None
         self._tk_datetime = None
         self._force_new_token = force_new_token
+        self.use_dataclasses = use_dataclasses
 
         if not os.path.exists(os.path.join(self._env_dir, self.token_filename)):
             with open(os.path.join(self._env_dir, self.token_filename), "w") as f:
@@ -71,7 +84,7 @@ class UPClient:
             self._tk = os.getenv('UP_TOKEN')
 
     @staticmethod
-    def _date_param_to_str(dt: Union[datetime, str, None]) -> Union[str, None]:
+    def _date_param_to_str(dt: Union[datetime, str, None]) -> Optional[str]:
         if isinstance(dt, datetime):
             return dt.strftime('%Y-%m-%d')
         if isinstance(dt, str):
@@ -144,7 +157,7 @@ class UPClient:
                     param[k] = v
         return f"{self.base_url}{endpoint}?{urlencode(param)}"
 
-    def _call_api(self, url):
+    def _call_api(self, url: str) -> Any:
         """
         Call a Union Pacific API and return JSON response
         :param url: API Base URL
@@ -162,10 +175,23 @@ class UPClient:
                             f"\nStatus Code: {resp.status_code};"
                             f"\nResponse: {resp.text}")
 
+    @classmethod
+    def _json_to_dataclass(cls, resp_json: Any, dc: dataclass) -> Union[List[dataclass], dataclass]:
+        # Remove any data fields that are not in dataclass
+        data_keys = [f.name for f in fields(dc)]  # noqa
+        if isinstance(resp_json, dict):
+            return from_dict(dc, {k: resp_json[k] for k in data_keys if k in resp_json.keys()})
+
+        resp = []
+        for item in resp_json:
+            resp.append(from_dict(dc, {k: item[k] for k in data_keys if k in item.keys()}))
+        return resp
+
+
     def get_routes(self, origin_id, dest_id, origin_rr: Optional[str] = None, dest_rr: Optional[str] = None,
-                   jct_abbr: Optional[str] = None, jct_rr: Optional[str] = None) -> list[Route]:
+                   jct_abbr: Optional[str] = None, jct_rr: Optional[str] = None) -> Union[List[Route, dict]]:
         """
-        Find all applicable routes given a set of criteria. Origin and Destination Location Id are required.
+        Find all applicable routes given a set of criteria. Origin and Destination location id are required.
         Junction carriers can only be provided if at least one junction is given. Provided junction
         carriers will be applied to all given junctions.
 
@@ -187,17 +213,15 @@ class UPClient:
         url = self.endpoint_builder(self.route_endpoint, origin_id=origin_id, destination_id=dest_id, **optional_params)
         r_json = self._call_api(url)
 
-        # Remove any data fields that are not in dataclass
-        data_keys = [f.name for f in fields(Route)]  # noqa
+        if self.use_dataclasses:
+            return self._json_to_dataclass(r_json, Route)
+        else:
+            return r_json
 
-        resp = []
-        for rt in r_json:
-            resp.append(from_dict(Route, {k: rt[k] for k in data_keys if k in rt.keys()}))
-        return resp
 
-    def get_route_by_id(self, route_id: str) -> Route:
+    def get_route_by_id(self, route_id: str) -> Union[Route, dict]:
         """
-        Return the details of a route by Id. Details include the segments of the Route.
+        Return the details of a route by id. Details include the segments of the Route.
 
         :param route_id: UP route id (required)
         :return: a Route object
@@ -205,11 +229,12 @@ class UPClient:
         url = self.endpoint_builder(f"{self.route_endpoint}/{route_id}")
         r_json = self._call_api(url)
 
-        # Remove any data fields that are not in dataclass
-        data_keys = [f.name for f in fields(Route)]  # noqa
-        return from_dict(Route, {k: r_json[k] for k in data_keys if k in r_json.keys()})
+        if self.use_dataclasses:
+            return self._json_to_dataclass(r_json, Route)
+        else:
+            return r_json
 
-    def get_locations(self, splc: Optional[str] = None) -> list[Location]:
+    def get_locations(self, splc: Optional[str] = None) -> Union[List[Location, dict]]:
         """
         If no parameters are passed, all authorized locations associated with the user if no parameters are passed.
         Searching by SPLC includes a GENERAL location which represents the entirety of the area covered by the SPLC
@@ -223,15 +248,12 @@ class UPClient:
         url = self.endpoint_builder(self.locations_endpoint, splc=_splc)
         r_json = self._call_api(url)
 
-        # Remove any data fields that are not in dataclass
-        data_keys = [f.name for f in fields(Location)]  # noqa
+        if self.use_dataclasses:
+            return self._json_to_dataclass(r_json, Location)
+        else:
+            return r_json
 
-        resp = []
-        for loc in r_json:
-            resp.append(from_dict(Location, {k: loc[k] for k in data_keys if k in loc.keys()}))
-        return resp
-
-    def get_location_by_id(self, location_id: str) -> Location:
+    def get_location_by_id(self, location_id: str) -> Union[Location, dict]:
         """
         Using this detail service will return the Tracks and its capacity at facilities with Tracks.
 
@@ -241,13 +263,14 @@ class UPClient:
         url = self.endpoint_builder(f"{self.locations_endpoint}/{location_id}")
         r_json = self._call_api(url)
 
-        # Remove any data fields that are not in dataclass
-        data_keys = [f.name for f in fields(Location)]  # noqa
-        return from_dict(Location, {k: r_json[k] for k in data_keys if k in r_json.keys()})
+        if self.use_dataclasses:
+            return self._json_to_dataclass(r_json, Location)
+        else:
+            return r_json
 
-    def get_shipments(self, equipment_ids: Optional[list[str]] = None, waybill_ids: Optional[list[str]] = None,
-        origin_id: Optional[list[str]] = None, destination_id: Optional[list[str]] = None,
-        phase_codes: Optional[list[str]] = None) -> list[Shipment]:
+    def get_shipments(self, equipment_ids: Optional[List[str]] = None, waybill_ids: Optional[List[str]] = None,
+        origin_id: Optional[List[str]] = None, destination_id: Optional[List[str]] = None,
+        phase_codes: Optional[List[str]] = None) -> Union[List[Shipment, dict]]:
         """
         This service can be used to retrieve requested Shipments for which the user is party to the bill.
         A shipment represents the delivery of a loaded or empty rail equipment from origin to destination.
@@ -284,15 +307,12 @@ class UPClient:
         url = self.endpoint_builder(self.shipments_endpoint, **optional_params)
         r_json = self._call_api(url)
 
-        # Remove any data fields that are not in dataclass
-        data_keys = [f.name for f in fields(Shipment)]  # noqa
+        if self.use_dataclasses:
+            return self._json_to_dataclass(r_json, Shipment)
+        else:
+            return r_json
 
-        resp = []
-        for shp in r_json:
-            resp.append(from_dict(Shipment, {k: shp[k] for k in data_keys if k in shp.keys()}))
-        return resp
-
-    def get_shipment_by_id(self, shipment_id: str) -> Shipment:
+    def get_shipment_by_id(self, shipment_id: str) -> Union[Shipment, dict]:
         """
         Returns shipments for which the user is party to the bill. A shipment represents the delivery
         of a loaded or empty rail equipment from origin to destination. The shipment ID is a unique number
@@ -308,21 +328,26 @@ class UPClient:
         url = self.endpoint_builder(f"{self.shipments_endpoint}/{shipment_id}")
         r_json = self._call_api(url)
 
-        # Remove any data fields that are not in dataclass
-        data_keys = [f.name for f in fields(Shipment)]  # noqa
-        return from_dict(Shipment, {k: r_json[k] for k in data_keys if k in r_json.keys()})
+        if self.use_dataclasses:
+            return self._json_to_dataclass(r_json, Shipment)
+        else:
+            return r_json
 
-    def get_case_by_id(self, case_id: str) -> Case:
+    def get_case_by_id(self, case_id: str) -> Union[Case, dict]:
         """
         :param case_id: Use to get a single case details.
         :return:
         """
         url = self.endpoint_builder(f"{self.cases_endpoint}/{case_id}")
         r_json = self._call_api(url)
-        return r_json
 
-    def get_cases(self, created: Union[datetime, str, None] = None, status_codes: Optional[list[str]] = None,
-                  equipment_ids: Optional[list[str]] = None) -> list[Case]:
+        if self.use_dataclasses:
+            return self._json_to_dataclass(r_json, Case)
+        else:
+            return r_json
+
+    def get_cases(self, created: Union[datetime, str, None] = None, status_codes: Optional[List[str]] = None,
+                  equipment_ids: Optional[List[str]] = None) -> Union[List[Case, dict]]:
         """
         If no parameters are given will return all "OPEN" Cases.
 
@@ -341,15 +366,12 @@ class UPClient:
         url = self.endpoint_builder(f"{self.cases_endpoint}", **optional_params)
         r_json = self._call_api(url)
 
-        # Remove any data fields that are not in dataclass
-        data_keys = [f.name for f in fields(Case)]  # noqa
+        if self.use_dataclasses:
+            return self._json_to_dataclass(r_json, Case)
+        else:
+            return r_json
 
-        resp = []
-        for c in r_json:
-            resp.append(from_dict(Case, {k: c[k] for k in data_keys if k in c.keys()}))
-        return resp
-
-    def get_waybill_by_id(self, waybill_id: str) -> Waybill:
+    def get_waybill_by_id(self, waybill_id: str) -> Union[Waybill, dict]:
         """
         Use to get a single waybill details
 
@@ -358,9 +380,14 @@ class UPClient:
         """
         url = self.endpoint_builder(f"{self.waybill_endpoint}/{waybill_id}")
         r_json = self._call_api(url)
-        return r_json
 
-    def get_waybills(self, shipment_ids: Optional[list[str]] = None, equipment_ids: Optional[list[str]] = None) -> list[Waybill]:
+        if self.use_dataclasses:
+            return self._json_to_dataclass(r_json, Waybill)
+        else:
+            return r_json
+
+    def get_waybills(self, shipment_ids: Optional[List[str]] = None,
+                     equipment_ids: Optional[List[str]] = None) -> Union[List[Waybill, dict]]:
         """
         Must provide at least one query parameter.
 
@@ -377,10 +404,23 @@ class UPClient:
         url = self.endpoint_builder(f"{self.cases_endpoint}", **optional_params)
         r_json = self._call_api(url)
 
-        # Remove any data fields that are not in dataclass
-        data_keys = [f.name for f in fields(Waybill)]  # noqa
+        if self.use_dataclasses:
+            return self._json_to_dataclass(r_json, Waybill)
+        else:
+            return r_json
 
-        resp = []
-        for w in r_json:
-            resp.append(from_dict(Waybill, {k: w[k] for k in data_keys if k in w.keys()}))
-        return resp
+    def get_equipment_by_id(self, equipment_id: str) -> Union[Equipment, dict]:
+        """
+        Use to get single equipment details. The id is the concatenation of equipment initial and
+        number without any leading zeros, spaces, or check digit
+
+        :param equipment_id: Equipment id (Same as equipment number)
+        :return: Equipment Object
+        """
+        url = self.endpoint_builder(f"{self.equipment_endpoint}/{equipment_id}")
+        r_json = self._call_api(url)
+
+        if self.use_dataclasses:
+            return self._json_to_dataclass(r_json, Equipment)
+        else:
+            return r_json

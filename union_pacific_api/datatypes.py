@@ -1,10 +1,29 @@
-from typing import Optional
+from __future__ import annotations
+
+from typing import Optional, List
 from abc import ABCMeta
 from dataclasses import dataclass, field
 
 
 class BaseData(object, metaclass=ABCMeta):
     pass
+
+
+@dataclass(frozen=True)
+class EquipmentLength(BaseData):
+    length: Optional[float] = None
+
+
+@dataclass(frozen=True)
+class EquipmentVolume(BaseData):
+    cubic_capacity: Optional[float] = None
+
+
+@dataclass(frozen=True)
+class EquipmentDimensions(BaseData):
+    exterior: Optional[EquipmentLength] = None
+    volume: Optional[EquipmentVolume] = None
+    tare: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -18,9 +37,11 @@ class EquipmentWeight(BaseData):
 class Equipment(BaseData):
     id: str
     aar_type: Optional[str] = None
+    up_type: Optional[str] = None
     weight: Optional[EquipmentWeight] = None
     owner_type_code: Optional[str] = None
     lessee_initial: Optional[str] = None
+    dimensions: Optional[EquipmentDimensions] = None
 
 
 @dataclass(frozen=True)
@@ -47,9 +68,9 @@ class Assessorial(BaseData):
 class BOL(BaseData):
     equipment: Equipment
     waybill: Optional[Waybill] = None
-    commodities: Optional[list[Commodity]] = None
+    commodities: Optional[List[Commodity]] = None
     load_empty_code: Optional[str] = None
-    associated_equipment: Optional[list[str]] = None
+    associated_equipment: Optional[List[str]] = None
     pickup_number: Optional[str] = None
     yard_block: Optional[str] = None
     assessorial_information: Optional[Assessorial] = None
@@ -87,7 +108,7 @@ class Segment(BaseData):
 @dataclass(frozen=True)
 class RouteMileage(BaseData):
     mileage: float
-    route_segments: Optional[list[Segment]] = None
+    route_segments: Optional[List[Segment]] = None
     type_code: Optional[str] = None
 
 
@@ -95,11 +116,11 @@ class RouteMileage(BaseData):
 class Route(BaseData):
     origin: CarrierLocation
     destination: CarrierLocation
-    route_mileages: Optional[list[RouteMileage]] = None  # not always provided on shipment searches
+    route_mileages: Optional[List[RouteMileage]] = None  # not always provided on shipment searches
     id: Optional[str] = None  # id not always provided on shipment searches
-    junctions: Optional[list[CarrierLocation]] = None
+    junctions: Optional[List[CarrierLocation]] = None
     last_accomplished_event_stop: Optional[CarrierLocation] = None
-    route_str: list[str] = field(init=False)
+    route_str: List[str] = field(init=False)
 
     def __post_init__(self):
         self.route_str = []
@@ -150,7 +171,7 @@ class Shipment(BaseData):
     route: Optional[Route] = None
     hold_code: Optional[str] = None
     started_dwell: Optional[str] = None  # The time the shipment began dwell in YYYY-MM-DDTHH:MM:SSZ in UTC time format.
-    operational_move_events: Optional[list[Event]] = None
+    operational_move_events: Optional[List[Event]] = None
 
 
 @dataclass(frozen=True)
@@ -175,7 +196,7 @@ class Case(BaseData):
     created: str  # The time the shipment began dwell in YYYY-MM-DDTHH:MM:SSZ in UTC time format.
     last_modified_by: Optional[User] = None
     last_modified: Optional[str] = None  # The time the shipment began dwell in YYYY-MM-DDTHH:MM:SSZ in UTC time format.
-    tracked_comments: Optional[list[CaseComment]] = None
+    tracked_comments: Optional[List[CaseComment]] = None
     lead_shipment: Optional[Shipment] = None
     lead_equipment: Optional[Equipment] = None
     waybill: Optional[Waybill] = None
