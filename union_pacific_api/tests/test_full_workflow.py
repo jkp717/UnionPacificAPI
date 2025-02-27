@@ -13,7 +13,7 @@ from union_pacific_api.datatypes import (
     Equipment
 )
 
-# To run, just run 'pytest -v' in main directory
+# To run, use 'pytest -v' command in main directory
 
 # ---- Custom Request Mocking ----
 @pytest.fixture
