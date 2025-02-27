@@ -95,7 +95,6 @@ class UPClient:
     def token(self) -> Optional[str]:
         if self._tk:
             if datetime.now() > self._tk_datetime + timedelta(hours=2):
-                print(f"Old token out of date: {self._tk_datetime}")
                 self._tk = self._request_token()
         else:
             self._tk = self._request_token()
@@ -104,7 +103,6 @@ class UPClient:
     @token.setter
     def token(self, tk) -> None:
         if self._tk != tk:
-            print(f"New token set: {tk}")
             _path = os.path.join(self._env_dir, self.token_filename)
             _iso_date = datetime.now() if tk else ""
             # set timestamp env variable in iso format
@@ -140,6 +138,9 @@ class UPClient:
         self.token = r_json['access_token']
         return self.token
 
+    def get_new_token(self):
+        self._request_token()
+
     def endpoint_builder(self, endpoint: str, **kwargs):
         """
         Builds union_pacific_api url as string
@@ -147,15 +148,18 @@ class UPClient:
         :param kwargs: URL parameters (key/value pairs)
         :return: URL string
         """
-        # Remove any items with a value of None
-        param = {}
-        for k, v in kwargs.items():
-            if v is not None:
-                if isinstance(v, list):
-                    param[k] = ','.join(v)
-                else:
-                    param[k] = v
-        return f"{self.base_url}{endpoint}?{urlencode(param)}"
+        if kwargs:
+            # Remove any items with a value of None
+            param = {}
+            for k, v in kwargs.items():
+                if v is not None:
+                    if isinstance(v, list):
+                        param[k] = ','.join(v)
+                    else:
+                        param[k] = v
+            return f"{self.base_url}{endpoint}?{urlencode(param)}"
+        else:
+            return f"{self.base_url}{endpoint}"
 
     def _call_api(self, url: str) -> Any:
         """
