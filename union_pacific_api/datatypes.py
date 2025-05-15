@@ -121,6 +121,10 @@ class Route(BaseData):
     junctions: Optional[List[CarrierLocation]] = None
     last_accomplished_event_stop: Optional[CarrierLocation] = None
     route_str: List[str] = field(init=False)
+    destination_rr: str = field(init=False)
+
+    def __hash__(self):
+        return hash((self.id, self.route_str[0], self.origin.location.id, self.destination.location.id, self.destination_rr))
 
     def __post_init__(self):
         self.route_str = []
@@ -133,12 +137,14 @@ class Route(BaseData):
                         prev_rr = seg.carrier
                         route_str = seg.carrier
                         continue
-                    if prev_rr != seg.carrier:
-                        if prev_rr == 'UP':
-                            # We only care about the next RR interchanging w/ UP
-                            route_str += f"-{seg.beginning.junction_abbreviation}-{seg.carrier}"
+                    if prev_rr != seg.carrier and seg.carrier is not None:
+                        # if prev_rr == 'UP':
+                        #     # We only care about the next RR interchanging w/ UP
+                        route_str += f"-{seg.beginning.junction_abbreviation}-{seg.carrier}"
                         prev_rr = seg.carrier
+                self.destination_rr = prev_rr
                 self.route_str.append(route_str)
+
 
 
 @dataclass(frozen=True)
