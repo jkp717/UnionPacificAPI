@@ -1,2 +1,4 @@
 /.token
 /test.py
+/.env
+/api_script.py
