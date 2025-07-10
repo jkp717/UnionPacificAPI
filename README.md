@@ -6,8 +6,23 @@ from union_pacific_api import UPClient
 
 
 if __name__ == "__main__":
+
+    # Initialize UPClient either with .env file or by passing credentials
     # api = UPClient(userid='xxxxxxx', password='password')
     api = UPClient()  # using .env file
-    # locations = api.get_locations(splc="424250000")
-    shp = api.get_shipment_by_id('c6a77911-9e01-4e8b-857a-36a64a20e221')
+
+    origin_loc = api.get_locations(splc='883012')
+    destination_loc = api.get_locations(splc='261200')
+    
+    # Get the location ID from the get_locations call
+    origin_id = origin_loc[0].id
+    destination_id = destination_loc[0].id
+    
+    # Get the route options from O/D pair
+    routes = api.get_routes(origin_loc[0].id, destination_loc[0].id)
+    
+    # Print unique routes
+    unique_routes = set([r for r in routes])
+    for r in unique_routes:
+        print(r.route_str, r.destination_rr)
 ```
